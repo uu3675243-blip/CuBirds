@@ -36,7 +36,6 @@ button{appearance:none;border:none;height:36px;padding:0 14px;border-radius:10px
 .birdSel{display:flex;flex-wrap:wrap;gap:6px}.bBtn{padding:7px 12px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;border:2px solid transparent;color:#fff;transition:.1s}.bBtn.sel{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.3)}
 .flkSel{display:flex;flex-wrap:wrap;gap:6px}.fBtn{padding:7px 12px;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;border:2px solid transparent;color:#fff;transition:.1s}.fBtn.sel{border-color:#f59e0b}
 .handBox{margin-bottom:10px}.handH{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap}.handH .t{font-size:17px;font-weight:900}.handH .s{font-size:12px;color:rgba(255,255,255,.6)}
-.sortCtl{display:flex;gap:4px;align-items:center}.sortBtn{height:28px;padding:0 10px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15)}.sortBtn.act{background:linear-gradient(90deg,#fbbf24,#f59e0b);color:#4a2b05;border-color:#f59e0b}
 .handScr{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
 .hc{flex:0 0 64px;height:80px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#fff;font-weight:900;cursor:pointer;border:2px solid transparent;transition:.12s;user-select:none;position:relative;overflow:hidden;padding:4px 2px}
 .hc .hE{font-size:26px;line-height:1}.hc .hN{font-size:9px;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;text-align:center}.hc .hI{font-size:9px;line-height:1;opacity:.85}.hc .hCnt{position:absolute;top:2px;right:3px;font-size:9px;background:rgba(0,0,0,.45);padding:1px 4px;border-radius:4px;line-height:1.2}
@@ -98,7 +97,7 @@ button{appearance:none;border:none;height:36px;padding:0 14px;border-radius:10px
 <div class="playerRow" id="playerRow"></div>
 
 <div class="tableBox">
-  <h2>🪺 場のカード（4列）</h2>
+  <h2>🍯 場のカード（4列）</h2>
   <div id="rowsCont"></div>
 </div>
 
@@ -111,11 +110,7 @@ button{appearance:none;border:none;height:36px;padding:0 14px;border-radius:10px
 <div class="handBox">
   <div class="handH">
     <div class="t">🃏 あなたの手札 <span id="hCnt">0</span>枚</div>
-    <div class="sortCtl">
-      <span class="s" id="hHelp">-</span>
-      <button id="sortType" class="sortBtn act" title="種類順">🐦種類順</button>
-      <button id="sortDraw" class="sortBtn" title="引いた順">📥引いた順</button>
-    </div>
+    <div class="s" id="hHelp">-</div>
   </div>
   <div class="handScr" id="handScr"></div>
 </div>
@@ -183,20 +178,19 @@ var BIRDS={FLAMINGO:{name:'フラミンゴ',emoji:'🦩',small:2,large:3,total:7
 var BK=Object.keys(BIRDS);
 var HAND_SIZE=8, ROW_COUNT=4, INIT_ROW_SIZE=3, LOG_TAIL=200;
 var PH={place:'カード配置',draw_or_pass:'ドロー/パス',flock:'群れ公開'};
-var SK={token:'cb_token',roomId:'cb_room',name:'cb_name',sort:'cb_sort'};
+var SK={token:'cb_token',roomId:'cb_room',name:'cb_name'};
 
 var S={
   token:ldTk(),
   roomId:localStorage.getItem(SK.roomId)||'',
   playerName:localStorage.getItem(SK.name)||'',
-  sortMode:localStorage.getItem(SK.sort)||'type',
-  room:null, roomRef:null,
+  room:null, roomRef:null, subscribedId:'',
   pending:false, shownRes:null,
   selBird:'', selRow:-1, selSide:'',
   selFlock:'', selFlockSz:''
 };
 var E={};
-['playerName','maxPlayers','roomInput','createBtn','joinBtn','copyBtn','startBtn','resetBtn','pillRoom','pillSeat','pillTurn','pillPhase','pillDeck','pillDiscard','pillStatus','statusMsg','playerRow','rowsCont','phaseBox','phT','phD','phC','hCnt','hHelp','handScr','tabLog','tabRule','logPane','rulePane','logList','toast','resOv','resT','resB','resClose','sortType','sortDraw'].forEach(function(id){E[id]=document.getElementById(id);});
+['playerName','maxPlayers','roomInput','createBtn','joinBtn','copyBtn','startBtn','resetBtn','pillRoom','pillSeat','pillTurn','pillPhase','pillDeck','pillDiscard','pillStatus','statusMsg','playerRow','rowsCont','phaseBox','phT','phD','phC','hCnt','hHelp','handScr','tabLog','tabRule','logPane','rulePane','logList','toast','resOv','resT','resB','resClose'].forEach(function(id){E[id]=document.getElementById(id);});
 
 init();
 
@@ -206,13 +200,13 @@ function init(){
   var rp=new URL(location.href).searchParams.get('room');
   if(rp)S.roomId=rp.toUpperCase();
   E.roomInput.value=S.roomId;
-  applySortUI();
   bindEv();
   renderAll();
   if(S.roomId) joinRoom(S.roomId,false);
 }
 
 function bindEv(){
+  E.playerName.addEventListener('input',saveName);
   E.playerName.addEventListener('change',saveName);
   E.createBtn.addEventListener('click',createRoom);
   E.joinBtn.addEventListener('click',function(){joinRoom((E.roomInput.value||'').trim().toUpperCase(),true);});
@@ -222,10 +216,7 @@ function bindEv(){
   E.tabLog.addEventListener('click',function(){setTab('log');});
   E.tabRule.addEventListener('click',function(){setTab('rule');});
   E.resClose.addEventListener('click',function(){E.resOv.classList.remove('show');});
-  E.sortType.addEventListener('click',function(){S.sortMode='type';localStorage.setItem(SK.sort,'type');applySortUI();rHand();});
-  E.sortDraw.addEventListener('click',function(){S.sortMode='draw';localStorage.setItem(SK.sort,'draw');applySortUI();rHand();});
 }
-function applySortUI(){E.sortType.classList.toggle('act',S.sortMode==='type');E.sortDraw.classList.toggle('act',S.sortMode==='draw');}
 
 function ldTk(){var t=localStorage.getItem(SK.token);if(!t){t='cb_'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem(SK.token,t);}return t;}
 function saveName(){S.playerName=(E.playerName.value||'').trim().slice(0,20);localStorage.setItem(SK.name,S.playerName);}
@@ -240,18 +231,20 @@ function txRoom(id, updater){
   return ref.transaction(function(cur){
     if(cur===null) return;
     try{return updater(cur);}catch(e){console.error('tx err',e);throw e;}
-  },function(err,committed,snap){
-    if(err){hErr(err);return;}
-    if(!committed){tst('競合しました。再試行してください');return;}
   });
 }
 
 function subscribeRoom(id){
+  if(S.subscribedId===id && S.roomRef) return; // 既に購読中
   if(S.roomRef){S.roomRef.off();S.roomRef=null;}
+  S.subscribedId = id;
   S.roomRef = DB.ref(roomPath(id));
   S.roomRef.on('value',function(snap){
     var raw = snap.val();
-    if(!raw){tst('部屋が削除されました');S.room=null;S.roomId='';localStorage.removeItem(SK.roomId);renderAll();return;}
+    if(!raw){
+      if(S.subscribedId===id){tst('部屋が削除されました');S.room=null;S.roomId='';localStorage.removeItem(SK.roomId);renderAll();}
+      return;
+    }
     S.room = buildView(raw, S.token);
     S.roomId = raw.roomId;
     localStorage.setItem(SK.roomId, S.roomId);
@@ -261,6 +254,9 @@ function subscribeRoom(id){
   },function(err){console.error('sub err',err);tst('接続エラー');});
 }
 
+/* ============================================================
+   Actions
+   ============================================================ */
 function createRoom(){
   saveName();
   if(S.pending)return;
@@ -277,46 +273,63 @@ function createRoom(){
     },function(err,committed){
       if(err){pen(false);hErr(err);return;}
       if(!committed){tryCreate(attempt+1);return;}
-      pen(false); tst('ルーム作成！'); subscribeRoom(id);
+      // 購読を先に開始、state は subscribe 経由で来る
+      subscribeRoom(id);
+      pen(false); tst('ルーム作成！');
     });
   };
   tryCreate(0);
 }
 
+// ★修正: 購読を先に開始、その後トランザクションで自席追加
 function joinRoom(id, show){
   if(!id){tst('部屋番号を入力');return;}
   saveName();
+  if(S.pending)return;
   pen(true);
+  // ★Step1: 先に購読開始 → subscribe listener が state 変化を検知する
+  subscribeRoom(id);
+
+  // ★Step2: トランザクションで自席を確保 (一回のクリックで参加完了)
   var ref = DB.ref(roomPath(id));
-  ref.once('value').then(function(snap){
-    if(!snap.exists()){pen(false);tst('ルームが見つかりません');return;}
-    ref.transaction(function(st){
-      if(!st) return;
-      var seat = detectSeat(st, S.token);
-      var name = normName(S.playerName, 'プレイヤー');
-      if(seat>=0){
-        st.players[seat].name = name;
-        pushLog(st,'system', name+' が再接続しました。');
-      } else if(st.status==='waiting'){
-        var cnt = (st.players||[]).length;
-        if(cnt < st.settings.maxPlayers){
-          var p = createPlayer(cnt, S.token, name);
-          st.players.push(p);
-          st.hands = st.hands||{}; st.collections = st.collections||{};
-          st.hands[String(cnt)] = [];
-          st.collections[String(cnt)] = [];
-          pushLog(st,'system', p.name+' が参加しました。');
-        }
+  ref.transaction(function(st){
+    if(st===null) return; // 存在しない部屋 (abort)
+    var seat = detectSeat(st, S.token);
+    var name = normName(S.playerName, 'プレイヤー');
+    if(seat>=0){
+      // 既に席あり → 名前更新のみ
+      st.players[seat].name = name;
+      pushLog(st,'system', name+' が再接続しました。');
+    } else if(st.status==='waiting'){
+      var cnt = (st.players||[]).length;
+      if(cnt < st.settings.maxPlayers){
+        var p = createPlayer(cnt, S.token, name);
+        st.players.push(p);
+        st.hands = st.hands||{}; st.collections = st.collections||{};
+        st.hands[String(cnt)] = [];
+        st.collections[String(cnt)] = [];
+        pushLog(st,'system', p.name+' が参加しました。');
       }
-      trimLogs(st); st.updatedAt = nowIso();
-      return st;
-    },function(err,committed){
-      pen(false);
-      if(err){hErr(err);return;}
-      if(show) tst('参加！');
-      subscribeRoom(id);
-    });
-  }).catch(function(e){pen(false);hErr(e);});
+    }
+    trimLogs(st); st.updatedAt = nowIso();
+    return st;
+  }, function(err, committed, snap){
+    pen(false);
+    if(err){hErr(err);return;}
+    if(!snap || !snap.exists()){
+      // 部屋が存在しなかった → 購読解除
+      if(S.roomRef){S.roomRef.off();S.roomRef=null;S.subscribedId='';}
+      tst('ルームが見つかりません');
+      return;
+    }
+    if(show){
+      var st = snap.val();
+      var mySeat = detectSeat(st, S.token);
+      if(mySeat>=0) tst('参加！（P'+(mySeat+1)+'）');
+      else if(st.status==='playing') tst('対戦中のため観戦モード');
+      else tst('満員のため観戦モード');
+    }
+  });
 }
 
 function startGame(){
@@ -389,7 +402,7 @@ function doPlace(){
     }
     trimLogs(st); st.updatedAt=nowIso();
     return st;
-  }).then(function(){pen(false);clrSel();},function(e){pen(false);hErr(e);});
+  }).then(function(){clrSel();pen(false);},function(e){pen(false);hErr(e);});
 }
 
 function doDP(choice){
@@ -409,7 +422,7 @@ function doDP(choice){
     }
     st.turnPhase='flock'; trimLogs(st); st.updatedAt=nowIso();
     return st;
-  }).then(function(){pen(false);clrSel();},function(e){pen(false);hErr(e);});
+  }).then(function(){clrSel();pen(false);},function(e){pen(false);hErr(e);});
 }
 
 function doFlock(){
@@ -454,11 +467,14 @@ function doFlock(){
     pushLog(st,'flock', player.name+' が '+birdLabel(bt)+' の'+label+'を公開し、'+toColl+' 枚をコレクションに追加。');
     finishTurn(st, seat); trimLogs(st); st.updatedAt=nowIso();
     return st;
-  }).then(function(){pen(false);clrSel();},function(e){pen(false);hErr(e);});
+  }).then(function(){clrSel();pen(false);},function(e){pen(false);hErr(e);});
 }
 
 function clrSel(){S.selBird='';S.selRow=-1;S.selSide='';S.selFlock='';S.selFlockSz='';}
 
+/* ============================================================
+   Game logic (Code7.gs 移植 / ルール変更なし)
+   ============================================================ */
 function emptyState(roomId, settings, players, now, ownerToken){
   var hands={}, colls={};
   for(var i=0;i<players.length;i++){hands[String(i)]=[]; colls[String(i)]=[];}
@@ -644,8 +660,8 @@ function buildView(st, token){
       isTurn: p.seat===activeSeat, isYou: p.seat===seat
     };
   });
-  var handRaw = seat>=0 ? ((st.hands||{})[String(seat)]||[]).slice() : [];
-  var myHand = sortHandBy(handRaw, S.sortMode).map(toClientCard);
+  // ★常に種類順ソート
+  var myHand = seat>=0 ? ((st.hands||{})[String(seat)]||[]).slice().sort(sortByType).map(toClientCard) : [];
   var myCollection = seat>=0 ? ((st.collections||{})[String(seat)]||[]).slice().sort(sortByType).map(toClientCard) : [];
   var rows = (st.rows||[[],[],[],[]]).map(function(r){return (r||[]).map(toClientCard);});
   var canOperate = seat>=0 && st.status==='playing' && seat===activeSeat;
@@ -693,13 +709,10 @@ function playerName(st,seat){var p=playerBySeat(st,seat);return p?p.name:'-';}
 function toClientCard(c){var info=BIRDS[c.t]||{};return {id:c.id, type:c.t, name:info.name||c.t, emoji:info.emoji||'🐦', color:info.color||'#888', small:info.small||0, large:info.large||0};}
 
 function sortByType(a,b){var ai=BK.indexOf(a.t), bi=BK.indexOf(b.t);if(ai!==bi) return ai-bi;return String(a.id).localeCompare(String(b.id));}
-function sortByDraw(a,b){return String(a.id).localeCompare(String(b.id));}
-function sortHandBy(arr, mode){
-  var a = arr.slice();
-  if(mode==='draw') return a.sort(sortByDraw);
-  return a.sort(sortByType);
-}
 
+/* ============================================================
+   Rendering
+   ============================================================ */
 function renderAll(){rMeta();rPlayers();rTable();rPhase();rHand();rLogs();rBtns();}
 
 function rMeta(){
@@ -741,7 +754,7 @@ function rPlayers(){
 function rTable(){
   E.rowsCont.innerHTML='';
   var rows=S.room?S.room.rows:[[],[],[],[]];
-  var canOp=S.room&&S.room.canOperate&&S.room.turnPhase==='place';
+  var canOp=S.room&&S.room.canOperate&&S.room.turnPhase==='place'&&!S.pending;
   rows.forEach(function(row,ri){
     var w=document.createElement('div');w.className='rowWrap';
     w.innerHTML='<div class="rowLbl">列'+(ri+1)+' ('+row.length+'枚)</div>';
@@ -766,6 +779,7 @@ function rPhase(){
       var info=BIRDS[bt]||{};
       var b=mk('button','bBtn'+(S.selBird===bt?' sel':''));
       b.style.background=info.color;b.textContent=info.emoji+' '+info.name+' ×'+cts[bt]+' (小'+info.small+'/大'+info.large+')';
+      b.disabled=S.pending;
       b.onclick=function(){S.selBird=bt;rPhase();rHand();};
       bd.appendChild(b);
     });
@@ -789,8 +803,8 @@ function rPhase(){
       var fd=mk('div','flkSel');
       fks.sort(function(a,b){return BK.indexOf(a.birdType)-BK.indexOf(b.birdType);}).forEach(function(f){
         var info=BIRDS[f.birdType]||{};
-        if(f.canLarge){var bl=mk('button','fBtn'+(S.selFlock===f.birdType&&S.selFlockSz==='large'?' sel':''));bl.style.background=info.color;bl.textContent=info.emoji+' '+info.name+' 大群れ('+f.count+'/'+f.largeReq+') →2枚';bl.onclick=function(){S.selFlock=f.birdType;S.selFlockSz='large';rPhase();};fd.appendChild(bl);}
-        if(f.canSmall){var bs=mk('button','fBtn'+(S.selFlock===f.birdType&&S.selFlockSz==='small'?' sel':''));bs.style.background=info.color;bs.textContent=info.emoji+' '+info.name+' 小群れ('+f.count+'/'+f.smallReq+') →1枚';bs.onclick=function(){S.selFlock=f.birdType;S.selFlockSz='small';rPhase();};fd.appendChild(bs);}
+        if(f.canLarge){var bl=mk('button','fBtn'+(S.selFlock===f.birdType&&S.selFlockSz==='large'?' sel':''));bl.style.background=info.color;bl.disabled=S.pending;bl.textContent=info.emoji+' '+info.name+' 大群れ('+f.count+'/'+f.largeReq+') →2枚';bl.onclick=function(){S.selFlock=f.birdType;S.selFlockSz='large';rPhase();};fd.appendChild(bl);}
+        if(f.canSmall){var bs=mk('button','fBtn'+(S.selFlock===f.birdType&&S.selFlockSz==='small'?' sel':''));bs.style.background=info.color;bs.disabled=S.pending;bs.textContent=info.emoji+' '+info.name+' 小群れ('+f.count+'/'+f.smallReq+') →1枚';bs.onclick=function(){S.selFlock=f.birdType;S.selFlockSz='small';rPhase();};fd.appendChild(bs);}
       });
       E.phC.appendChild(fd);
     }
@@ -805,7 +819,7 @@ function rHand(){
   E.handScr.innerHTML='';
   var r=S.room;var hand=r?r.myHand||[]:[];
   E.hCnt.textContent=hand.length;
-  E.hHelp.textContent=hand.length?(S.sortMode==='type'?'種類別':'引いた順'):'手札なし';
+  E.hHelp.textContent=hand.length?'🐦 種類順':'手札なし';
   if(!hand.length){E.handScr.innerHTML='<div style="color:rgba(255,255,255,.5);font-size:13px;padding:8px">手札はありません</div>';return;}
   var cts={};hand.forEach(function(c){cts[c.type]=(cts[c.type]||0)+1;});
   hand.forEach(function(c){
@@ -813,7 +827,8 @@ function rHand(){
     b.style.background=c.color;
     b.innerHTML='<span class="hE">'+esc(c.emoji)+'</span><span class="hN">'+esc(c.name)+'</span><span class="hI">小'+c.small+' / 大'+c.large+'</span><span class="hCnt">×'+(cts[c.type]||1)+'</span>';
     b.title=c.name;
-    b.onclick=function(){if(r&&r.canOperate&&r.turnPhase==='place'){S.selBird=c.type;rPhase();rHand();}};
+    b.disabled=S.pending;
+    b.onclick=function(){if(r&&r.canOperate&&r.turnPhase==='place'&&!S.pending){S.selBird=c.type;rPhase();rHand();}};
     E.handScr.appendChild(b);
   });
 }
@@ -846,7 +861,17 @@ function maybeRes(){
 
 function cpRoom(){if(!S.roomId)return;navigator.clipboard.writeText(S.roomId).then(function(){tst('コピー！');}).catch(function(){tst('失敗');});}
 function setTab(t){E.tabLog.classList.toggle('act',t==='log');E.tabRule.classList.toggle('act',t==='rule');E.logPane.style.display=t==='log'?'':'none';E.rulePane.style.display=t==='rule'?'':'none';}
-function pen(f){S.pending=f;E.createBtn.disabled=f;E.joinBtn.disabled=f;rBtns();}
+
+/* ★修正: pen(false) 時にも全再描画 (フェーズボタンの disabled 属性を即時更新) */
+function pen(f){
+  S.pending=f;
+  E.createBtn.disabled=f;
+  E.joinBtn.disabled=f;
+  // ★ S.pending 変化後は常に再描画 (フェーズボタンの disabled を正しく反映)
+  if(S.room) { rTable(); rPhase(); rHand(); }
+  rBtns();
+}
+
 function hErr(e){
   pen(false);
   var msg = e&&e.message?e.message:'エラー';
